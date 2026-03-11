@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     ...typography.headingLarge,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
   emptySubtitle: {
     ...typography.bodyMedium,

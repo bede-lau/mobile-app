@@ -55,17 +55,34 @@ export function useAuth() {
     }
   }, [setLoading]);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string): Promise<{
+    status: 'session_created' | 'email_confirmation_needed' | 'user_already_exists';
+  }> => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { full_name: fullName } },
       });
+
       if (error) throw error;
-      // Profile is created by database trigger (handle_new_user)
-      // AuthProvider handles profile fetch and setLoading(false) via onAuthStateChange
+
+      // Supabase returns empty identities if the user already exists
+      // (email enumeration protection — doesn't throw an error)
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        setLoading(false);
+        return { status: 'user_already_exists' };
+      }
+
+      // Check if we got a session (email confirmation might be required)
+      if (!data.session) {
+        setLoading(false);
+        return { status: 'email_confirmation_needed' };
+      }
+
+      // We have a session — AuthProvider handles the rest via onAuthStateChange
+      return { status: 'session_created' };
     } catch (error) {
       setLoading(false);
       throw error;

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
@@ -11,15 +12,17 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { Mail } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
-import Button from '@/components/ui/Button';  
+import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { colors, typography, spacing } from '@/constants/theme';
 
 export default function LoginScreen() {
+  console.log('[LoginScreen] Rendering');
   const { t } = useTranslation();
   const router = useRouter();
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,10 +35,33 @@ export default function LoginScreen() {
       await signIn(email, password);
       // Navigation handled by AuthProvider via onAuthStateChange
     } catch (error: any) {
-      Alert.alert(t('common.error'), error.message);
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('not confirmed') || msg.includes('email_not_confirmed')) {
+        Alert.alert(
+          'Email Not Confirmed',
+          'Your email has not been confirmed yet. Please check your inbox (including spam) for the confirmation link from Supabase.',
+        );
+      } else if (msg.includes('invalid') || msg.includes('credentials')) {
+        Alert.alert(t('common.error'), 'Invalid email or password. Please try again.');
+      } else {
+        Alert.alert(t('common.error'), error.message);
+      }
       setLoading(false);
     }
   }, [email, password, signIn, t]);
+
+  const handleForgotPassword = useCallback(async () => {
+    if (!email) {
+      Alert.alert(t('common.error'), 'Please enter your email address first.');
+      return;
+    }
+    try {
+      await resetPassword(email);
+      Alert.alert('Password Reset', 'Check your email for the password reset link.');
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message);
+    }
+  }, [email, resetPassword, t]);
 
   const handleGoogleLogin = useCallback(async () => {
     try {
@@ -59,7 +85,14 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.brand}>OLVON</Text>
+          <View style={styles.brandRow}>
+            <Image
+              source={require('@/assets/images/olvon-logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.brand}>OLVON</Text>
+          </View>
           <Text style={styles.title}>{t('auth.welcome')}</Text>
         </View>
 
@@ -80,7 +113,7 @@ export default function LoginScreen() {
             autoComplete="password"
           />
 
-          <Pressable onPress={() => {}} style={styles.forgotButton}>
+          <Pressable onPress={handleForgotPassword} style={styles.forgotButton}>
             <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
           </Pressable>
 
@@ -89,6 +122,7 @@ export default function LoginScreen() {
             onPress={handleLogin}
             loading={loading}
             fullWidth
+            leftIcon={<Mail size={18} color={colors.textInverse} />}
           />
 
           <View style={styles.divider}>
@@ -100,8 +134,15 @@ export default function LoginScreen() {
           <Button
             title={t('auth.google')}
             onPress={handleGoogleLogin}
-            variant="secondary"
+            variant="outline"
             fullWidth
+            leftIcon={
+              <Image
+                source={require('@/assets/images/google-logo.png')}
+                style={styles.googleIcon}
+                resizeMode="contain"
+              />
+            }
           />
         </View>
 
@@ -129,12 +170,25 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xxl,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  brandLogo: {
+    width: 24,
+    height: 24,
+  },
   brand: {
     ...typography.smallCaps,
     fontSize: 13,
     letterSpacing: 4,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+  },
+  googleIcon: {
+    width: 18,
+    height: 18,
   },
   title: {
     ...typography.displayMedium,

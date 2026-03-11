@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "scheme": "olvon",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#FAFAF7",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -46,17 +47,12 @@
           "cameraPermission": "Olvon needs camera access to create your 3D body avatar."
         }
       ],
-      [
-        "@stripe/stripe-react-native",
-        {
-          "merchantIdentifier": "merchant.com.olvon",
-          "enableGooglePay": true
-        }
-      ],
       "expo-secure-store",
       "expo-localization",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-video",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

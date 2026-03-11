@@ -92,9 +92,7 @@ export default function CategorySelector() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: {},
   sectionTitle: {
     ...typography.labelLarge,
     color: colors.textPrimary,
@@ -120,8 +118,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
+    width: 32,
+    height: 32,
     borderRadius: radius.sm,
     backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',

@@ -7,22 +7,28 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { ChevronLeft, Heart, Check, ChevronRight, ShoppingCart, Zap } from 'lucide-react-native';
 import * as Haptics from '@/lib/haptics';
 import { fetchGarment } from '@/lib/api';
 import { useCartStore } from '@/store/cartStore';
 import { useSizeRecommendation } from '@/hooks/useSizeRecommendation';
 import SizeRecommendationComponent from '@/components/SizeRecommendation';
 import Button from '@/components/ui/Button';
-import { colors, typography, spacing, radius, shadows } from '@/constants/theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '@/constants/theme';
 import { formatMYR } from '@/constants/sizeCharts';
 import type { Garment, GarmentSize } from '@/types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const MOCK_COLORS = [
+  { id: 'ivory', name: 'Ivory', hex: '#FDFBF7' },
+  { id: 'sand', name: 'Sand', hex: '#D7CDBB' },
+  { id: 'black', name: 'Black', hex: '#1C1C1C' },
+];
 
 export default function GarmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,7 +39,9 @@ export default function GarmentDetailScreen() {
   const [garment, setGarment] = useState<Garment | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<GarmentSize | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string>(MOCK_COLORS[0].id);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   const recommendation = useSizeRecommendation(garment);
 
@@ -43,7 +51,6 @@ export default function GarmentDetailScreen() {
       const result = await fetchGarment(id);
       if (result.data) {
         setGarment(result.data);
-        // Auto-select recommended size
         if (recommendation?.recommended_size) {
           setSelectedSize(recommendation.recommended_size);
         }
@@ -52,12 +59,13 @@ export default function GarmentDetailScreen() {
     })();
   }, [id]);
 
-  // Update selected size when recommendation loads
   useEffect(() => {
     if (recommendation && !selectedSize) {
       setSelectedSize(recommendation.recommended_size);
+    } else if (garment && !selectedSize && garment.sizes_available.length > 0) {
+      setSelectedSize(garment.sizes_available[0]);
     }
-  }, [recommendation, selectedSize]);
+  }, [recommendation, selectedSize, garment]);
 
   const handleAddToCart = useCallback(() => {
     if (!garment || !selectedSize) return;
@@ -75,6 +83,26 @@ export default function GarmentDetailScreen() {
     setTimeout(() => setAddedToCart(false), 2000);
   }, [garment, selectedSize, addItem]);
 
+  const handleBuyNow = useCallback(() => {
+    if (!garment || !selectedSize) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addItem({
+      garment_id: garment.id,
+      store_id: garment.store_id,
+      name: garment.name,
+      thumbnail_url: garment.thumbnail_url,
+      size: selectedSize,
+      quantity: 1,
+      unit_price_myr: garment.sale_price_myr ?? garment.price_myr,
+    });
+    router.push('/cart');
+  }, [garment, selectedSize, addItem, router]);
+
+  const toggleLike = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsLiked((prev) => !prev);
+  }, []);
+
   if (loading || !garment) {
     return (
       <View style={styles.loading}>
@@ -83,31 +111,52 @@ export default function GarmentDetailScreen() {
     );
   }
 
+  const storeName = garment.store_id.replace('store-', 'Store ');
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero image */}
-        <Image
-          source={{ uri: garment.thumbnail_url || undefined }}
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
+        {/* Hero image with overlay buttons */}
+        <View style={styles.heroContainer}>
+          <Image
+            source={{ uri: garment.thumbnail_url || undefined }}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
+          
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <ChevronLeft size={24} color={colors.textPrimary} />
+          </Pressable>
 
-        {/* Back button */}
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
-        </Pressable>
+          <Pressable style={styles.likeButton} onPress={toggleLike}>
+            <Heart 
+              size={24} 
+              color={isLiked ? '#F87171' : colors.textPrimary} 
+              fill={isLiked ? '#F87171' : 'transparent'} 
+              strokeWidth={1.5} 
+            />
+          </Pressable>
+        </View>
 
-        {/* Content */}
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Pressable onPress={() => router.push(`/store/${garment.store_id}`)}>
-              <Text style={styles.storeName}>
-                {t('garment.fromStore', { store: garment.store_id })}
-              </Text>
-            </Pressable>
-            <Text style={styles.name}>{garment.name}</Text>
+            <View style={styles.headerRow}>
+              <View style={styles.brandInfo}>
+                <View style={styles.brandTagContainer}>
+                  <Text style={styles.brandName} numberOfLines={1}>{storeName.toUpperCase()}</Text>
+                </View>
+                <Text style={styles.garmentName}>{garment.name}</Text>
+              </View>
+              
+              <Pressable onPress={() => router.push(`/store/${garment.store_id}`)} style={styles.storeAvatarButton}>
+                <Image
+                  source={{ uri: `https://picsum.photos/seed/${garment.store_id.replace('store-', '')}/200` }}
+                  style={styles.storeLogoCircle}
+                />
+              </Pressable>
+            </View>
+            
             <View style={styles.priceRow}>
               <Text style={styles.price}>
                 {formatMYR(garment.sale_price_myr ?? garment.price_myr)}
@@ -116,22 +165,25 @@ export default function GarmentDetailScreen() {
                 <Text style={styles.originalPrice}>{formatMYR(garment.price_myr)}</Text>
               )}
             </View>
+
+            <Text style={styles.description}>{garment.description}</Text>
           </View>
+
+          {/* Size recommendation */}
+          <SizeRecommendationComponent recommendation={recommendation} />
 
           {/* Size selector */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('garment.selectSize')}</Text>
+            <Text style={styles.sectionTitle}>{t('garment.size', 'SIZE')}</Text>
             <View style={styles.sizeRow}>
               {(garment.sizes_available as GarmentSize[]).map((size) => {
                 const isSelected = size === selectedSize;
-                const isRecommended = size === recommendation?.recommended_size;
                 return (
                   <Pressable
                     key={size}
                     style={[
                       styles.sizePill,
                       isSelected && styles.sizePillSelected,
-                      isRecommended && !isSelected && styles.sizePillRecommended,
                     ]}
                     onPress={() => setSelectedSize(size)}
                   >
@@ -149,55 +201,92 @@ export default function GarmentDetailScreen() {
             </View>
           </View>
 
-          {/* Size recommendation */}
-          <SizeRecommendationComponent recommendation={recommendation} />
-
-          {/* Description */}
+          {/* Color selector */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('garment.description')}</Text>
-            <Text style={styles.bodyText}>{garment.description}</Text>
-          </View>
-
-          {/* Fabric details */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('garment.fabric')}</Text>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{t('garment.composition')}</Text>
-              <Text style={styles.detailValue}>{garment.fabric_composition}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{t('garment.care')}</Text>
-              <Text style={styles.detailValue}>{garment.care_instructions}</Text>
-            </View>
-          </View>
-
-          {/* Style tags */}
-          {garment.style_tags.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('garment.styleNotes')}</Text>
-              <View style={styles.tagsRow}>
-                {garment.style_tags.map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagText}>{tag}</Text>
+            <Text style={styles.sectionTitle}>{t('garment.color', 'COLOR')}</Text>
+            <View style={styles.colorRow}>
+              {MOCK_COLORS.map((color) => {
+                const isSelected = color.id === selectedColor;
+                return (
+                  <View key={color.id} style={styles.colorWrapper}>
+                    <Pressable
+                      style={[
+                        styles.colorCircleWrapper,
+                        isSelected && styles.colorCircleWrapperSelected,
+                      ]}
+                      onPress={() => setSelectedColor(color.id)}
+                    >
+                      <View style={[styles.colorCircle, { backgroundColor: color.hex }]}>
+                        {isSelected && (
+                          <Check size={16} color={color.id === 'ivory' ? '#000' : '#FFF'} strokeWidth={3} />
+                        )}
+                      </View>
+                    </Pressable>
+                    <Text style={[styles.colorLabel, isSelected && styles.colorLabelSelected]}>
+                      {color.name}
+                    </Text>
                   </View>
-                ))}
-              </View>
+                );
+              })}
             </View>
-          )}
+          </View>
+
+          {/* Details */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('garment.details', 'DETAILS')}</Text>
+            
+            <View style={styles.detailList}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>{t('garment.fabric', 'Fabric')}</Text>
+                <Text style={styles.detailValue}>{garment.fabric_composition}</Text>
+              </View>
+              
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>{t('garment.care', 'Care')}</Text>
+                <Text style={styles.detailValue}>{garment.care_instructions}</Text>
+              </View>
+
+              {garment.style_tags.length > 0 && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{t('garment.styleNotes', 'Style Notes')}</Text>
+                  <Text style={styles.detailValue}>{garment.style_tags.join(', ')}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
         </View>
 
         {/* Bottom spacer for fixed button */}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Fixed bottom CTA */}
       <View style={styles.bottomBar}>
-        <Button
-          title={addedToCart ? t('garment.addedToCart') : t('garment.addToCart')}
-          onPress={handleAddToCart}
-          disabled={!selectedSize || addedToCart}
-          fullWidth
-        />
+        <View style={styles.actionRow}>
+          <Pressable 
+            style={[styles.actionButton, styles.addToCartButton]} 
+            onPress={handleAddToCart}
+            disabled={!selectedSize || addedToCart}
+          >
+            <View style={styles.buttonContent}>
+              <ShoppingCart size={18} color={colors.primary} style={styles.buttonIcon} />
+              <Text style={styles.addToCartText}>
+                {addedToCart ? `${t('garment.added', 'Added')}` : t('garment.addToCart', 'Add to Cart')}
+              </Text>
+            </View>
+          </Pressable>
+          <Pressable 
+            style={[styles.actionButton, styles.buyNowButton, (!selectedSize) && styles.disabledButton]} 
+            onPress={handleBuyNow}
+            disabled={!selectedSize}
+          >
+            <View style={styles.buttonContent}>
+              <Zap size={18} color={colors.textInverse} style={styles.buttonIcon} />
+              <Text style={styles.buyNowText}>{t('garment.buyNow', 'Buy Now')}</Text>
+            </View>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -218,51 +307,106 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.textSecondary,
   },
-  heroImage: {
+  heroContainer: {
+    position: 'relative',
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 1.2,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
     backgroundColor: colors.backgroundSecondary,
   },
   backButton: {
     position: 'absolute',
     top: 50,
     left: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.md,
+    ...shadows.sm,
   },
-  backText: {
-    fontSize: 20,
-    color: colors.primary,
+  likeButton: {
+    position: 'absolute',
+    top: 50,
+    right: spacing.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
   },
   content: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
   },
   header: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  storeName: {
-    ...typography.smallCaps,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
-  name: {
+  brandInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  brandTagContainer: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.sm, // Reduced distance to garment title
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    // Aesthetic backlight / glow
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(26,26,26,0.05)',
+  },
+  brandName: {
+    ...typography.labelLarge,
+    fontFamily: fontFamily.sansBold,
+    color: colors.primary,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  storeAvatarButton: {
+    marginTop: 4,
+  },
+  storeLogoCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  garmentName: {
     ...typography.displaySmall,
+    fontFamily: fontFamily.serifBold,
+    lineHeight: 34,
     color: colors.textPrimary,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   price: {
-    ...typography.headingMedium,
+    ...typography.headingLarge,
+    fontWeight: '700',
     color: colors.textPrimary,
   },
   originalPrice: {
@@ -270,82 +414,111 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textDecorationLine: 'line-through',
   },
+  description: {
+    ...typography.bodyLarge,
+    fontFamily: fontFamily.sansRegular,
+    color: colors.textSecondary,
+    lineHeight: 26,
+    letterSpacing: 0.2,
+  },
   section: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   sectionTitle: {
-    ...typography.labelLarge,
+    ...typography.smallCaps,
+    fontFamily: fontFamily.sansSemiBold,
+    fontSize: 11,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    letterSpacing: 1.5,
   },
   sizeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   sizePill: {
-    minWidth: 48,
-    height: 48,
-    borderRadius: radius.sm,
+    width: 54,
+    height: 54,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
   },
   sizePillSelected: {
-    backgroundColor: colors.primary,
     borderColor: colors.primary,
-  },
-  sizePillRecommended: {
-    borderColor: colors.secondary,
-    borderWidth: 2,
+    backgroundColor: colors.primaryLight,
   },
   sizeText: {
-    ...typography.bodyMedium,
+    ...typography.bodyLarge,
     fontWeight: '600',
     color: colors.textPrimary,
   },
   sizeTextSelected: {
     color: colors.textInverse,
   },
-  bodyText: {
-    ...typography.bodyLarge,
+  colorRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+  colorWrapper: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  colorCircleWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleWrapperSelected: {
+    borderColor: colors.primary,
+  },
+  colorCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  colorLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+  },
+  colorLabelSelected: {
     color: colors.textPrimary,
-    lineHeight: 26,
+  },
+  detailList: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: colors.border,
   },
   detailLabel: {
     ...typography.bodyMedium,
+    fontFamily: fontFamily.sansMedium,
     color: colors.textSecondary,
   },
   detailValue: {
     ...typography.bodyMedium,
+    fontFamily: fontFamily.sansRegular,
     color: colors.textPrimary,
     flex: 1,
     textAlign: 'right',
-    marginLeft: spacing.md,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  tagChip: {
-    backgroundColor: colors.backgroundSecondary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.xs,
-  },
-  tagText: {
-    ...typography.labelSmall,
-    color: colors.textSecondary,
+    marginLeft: spacing.xl,
   },
   bottomBar: {
     position: 'absolute',
@@ -353,8 +526,55 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.background,
-    padding: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: 40,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  buttonIconRight: {
+    marginLeft: 8,
+  },
+  actionButton: {
+    flex: 1,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addToCartButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  addToCartText: {
+    ...typography.labelLarge,
+    color: colors.primary,
+  },
+  buyNowButton: {
+    backgroundColor: colors.primary,
+  },
+  buyNowText: {
+    ...typography.labelLarge,
+    fontFamily: fontFamily.sansMedium,
+    color: colors.textInverse,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
 });
+

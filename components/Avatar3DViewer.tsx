@@ -7,35 +7,6 @@ interface Avatar3DViewerProps {
   onLoadError?: () => void;
 }
 
-/**
- * Avatar3DViewer - 3D GLB model renderer using react-three-fiber
- *
- * NOTE: This component requires the following packages to be installed:
- * - expo-gl
- * - expo-three
- * - three
- * - @react-three/fiber
- *
- * If packages are not installed, the component will trigger onLoadError callback
- * and the parent component should fall back to 2D rendering.
- *
- * Install with: npx expo install expo-gl expo-three three @react-three/fiber
- */
-
-// Check if 3D libraries are available
-const check3DLibraries = (): boolean => {
-  try {
-    require('@react-three/fiber/native');
-    require('three');
-    require('expo-gl');
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const HAS_3D_LIBS = check3DLibraries();
-
 function LoadingFallback() {
   return (
     <View style={styles.loading}>
@@ -45,43 +16,29 @@ function LoadingFallback() {
   );
 }
 
-function NotAvailable() {
-  return (
-    <View style={styles.loading}>
-      <Text style={styles.loadingText}>3D libraries not installed</Text>
-      <Text style={styles.installHint}>
-        Run: npx expo install expo-gl expo-three three @react-three/fiber
-      </Text>
-    </View>
-  );
-}
-
 export default function Avatar3DViewer({ glbUrl, onLoadError }: Avatar3DViewerProps) {
   const [isReady, setIsReady] = useState(false);
+  const [libsAvailable, setLibsAvailable] = useState<boolean | null>(null);
   const [Scene3D, setScene3D] = useState<React.ComponentType<{ glbUrl: string; onError: () => void }> | null>(null);
 
   const handleError = useCallback(() => {
     onLoadError?.();
   }, [onLoadError]);
 
-  // Dynamically load the 3D scene component
+  // Only check and load 3D libraries when this component actually mounts
   useEffect(() => {
-    if (!HAS_3D_LIBS) {
-      console.warn('[Avatar3DViewer] 3D libraries not installed');
-      handleError();
-      return;
-    }
+    let cancelled = false;
 
-    // Dynamic import to avoid TypeScript errors when packages aren't installed
     const load3DScene = async () => {
       try {
-        // Create the 3D scene component dynamically
         const { Canvas, useFrame, useLoader } = require('@react-three/fiber/native');
         const { GLTFLoader } = require('three/examples/jsm/loaders/GLTFLoader');
         const THREE = require('three');
         const React = require('react');
 
-        // Model component
+        if (cancelled) return;
+        setLibsAvailable(true);
+
         function Model({ url, onError }: { url: string; onError: () => void }) {
           const meshRef = React.useRef(null);
           const [loadError, setLoadError] = React.useState(false);
@@ -120,7 +77,6 @@ export default function Avatar3DViewer({ glbUrl, onLoadError }: Avatar3DViewerPr
           );
         }
 
-        // Scene component
         function Scene3DComponent({ glbUrl: url, onError }: { glbUrl: string; onError: () => void }) {
           return React.createElement(Canvas, {
             camera: { position: [0, 0, 4], fov: 45 },
@@ -138,23 +94,31 @@ export default function Avatar3DViewer({ glbUrl, onLoadError }: Avatar3DViewerPr
           );
         }
 
-        setScene3D(() => Scene3DComponent);
-        setIsReady(true);
+        if (!cancelled) {
+          setScene3D(() => Scene3DComponent);
+          setIsReady(true);
+        }
       } catch (e) {
-        console.error('[Avatar3DViewer] Failed to load 3D libraries:', e);
-        handleError();
+        console.warn('[Avatar3DViewer] 3D libraries not available:', e);
+        if (!cancelled) {
+          setLibsAvailable(false);
+          handleError();
+        }
       }
     };
 
     load3DScene();
+    return () => { cancelled = true; };
   }, [handleError]);
 
-  // 3D libraries not available
-  if (!HAS_3D_LIBS) {
-    return <NotAvailable />;
+  if (libsAvailable === false) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.loadingText}>3D viewer unavailable</Text>
+      </View>
+    );
   }
 
-  // Still loading
   if (!isReady || !Scene3D) {
     return <LoadingFallback />;
   }
@@ -162,8 +126,6 @@ export default function Avatar3DViewer({ glbUrl, onLoadError }: Avatar3DViewerPr
   return (
     <View style={styles.container}>
       <Scene3D glbUrl={glbUrl} onError={handleError} />
-
-      {/* 3D badge */}
       <View style={styles.badge3D}>
         <Text style={styles.badge3DText}>3D</Text>
       </View>
@@ -188,13 +150,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',
-  },
-  installHint: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-    fontFamily: 'monospace',
   },
   badge3D: {
     position: 'absolute',

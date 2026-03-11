@@ -1,26 +1,42 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserStore } from '@/store/userStore';
 import { useAuth } from '@/hooks/useAuth';
 import { colors, typography } from '@/constants/theme';
+
+const SEEN_KEY = '@olvon:seenGetStarted';
 
 export default function Index() {
   const router = useRouter();
   const { isLoading, isAuthenticated } = useAuth();
   const { user } = useUserStore();
+  const [hasSeenGetStarted, setHasSeenGetStarted] = useState<boolean | null>(null);
 
+  // Check AsyncStorage first — this must complete before any routing
   useEffect(() => {
-    if (isLoading) return;
+    AsyncStorage.getItem(SEEN_KEY).then((value) => {
+      setHasSeenGetStarted(value === 'true');
+    });
+  }, []);
+
+  // Route only after both auth state AND first-visit check are resolved
+  useEffect(() => {
+    if (isLoading || hasSeenGetStarted === null) return;
 
     if (!isAuthenticated) {
-      router.replace('/(auth)/login');
+      if (!hasSeenGetStarted) {
+        router.replace('/get-started');
+      } else {
+        router.replace('/(auth)/login');
+      }
     } else if (user && !user.onboarding_completed) {
       router.replace('/(auth)/onboarding');
-    } else {
+    } else if (user) {
       router.replace('/(tabs)/feed');
     }
-  }, [isLoading, isAuthenticated, user, router]);
+  }, [isLoading, isAuthenticated, user, router, hasSeenGetStarted]);
 
   return (
     <View style={styles.container}>

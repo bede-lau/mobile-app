@@ -3,16 +3,16 @@ import {
   View,
   Text,
   ScrollView,
+  Pressable,
   StyleSheet,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
-import { useStripe, isStripeAvailable } from '@/hooks/useStripePayment';
 import { useCartStore } from '@/store/cartStore';
 import { useUserStore } from '@/store/userStore';
-import { createPaymentIntent } from '@/lib/stripe';
 import { createOrder } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -23,7 +23,6 @@ import type { ShippingAddress } from '@/types';
 export default function CheckoutScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const { items, getTotal, clearCart } = useCartStore();
   const { user } = useUserStore();
 
@@ -50,31 +49,8 @@ export default function CheckoutScreen() {
     try {
       const total = getTotal();
 
-      // Create payment intent
-      const { clientSecret, paymentIntentId } = await createPaymentIntent(total, user.id);
-
-      // Initialize Stripe payment sheet
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'Olvon',
-      });
-
-      if (initError) {
-        Alert.alert(t('common.error'), initError.message);
-        setLoading(false);
-        return;
-      }
-
-      // Present payment sheet
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (presentError.code !== 'Canceled') {
-          Alert.alert(t('checkout.failed'), presentError.message);
-        }
-        setLoading(false);
-        return;
-      }
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Payment succeeded — create order
       // Group items by store
@@ -91,7 +67,6 @@ export default function CheckoutScreen() {
           items: storeItems,
           totalMyr: storeTotal,
           shippingAddress: address,
-          stripePaymentIntentId: paymentIntentId,
         });
       }
 
@@ -104,22 +79,27 @@ export default function CheckoutScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user, items, address, getTotal, initPaymentSheet, presentPaymentSheet, clearCart, router, t]);
+  }, [user, items, address, getTotal, clearCart, router, t]);
 
   const total = getTotal();
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>{t('checkout.title')}</Text>
-
-        {!isStripeAvailable && (
-          <View style={styles.webWarning}>
-            <Text style={styles.webWarningText}>
-              {t('checkout.webNotSupported', 'Payment is only available on the mobile app. Please download our iOS or Android app to complete your purchase.')}
-            </Text>
-          </View>
-        )}
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M19 12H5M5 12L12 19M5 12L12 5"
+                stroke={colors.textPrimary}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
+          <Text style={styles.title}>{t('checkout.title')}</Text>
+        </View>
 
         {/* Order summary */}
         <View style={styles.section}>
@@ -209,10 +189,21 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: 100,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
     ...typography.displaySmall,
     color: colors.textPrimary,
-    marginBottom: spacing.lg,
   },
   section: {
     marginBottom: spacing.lg,

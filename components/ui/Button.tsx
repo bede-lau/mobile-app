@@ -1,4 +1,4 @@
-import { Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import { Pressable, Text, View, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { colors, typography, spacing, radius, MIN_TOUCH_TARGET } from '@/constants/theme';
 
 interface ButtonProps {
@@ -11,6 +11,7 @@ interface ButtonProps {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  leftIcon?: React.ReactNode;
 }
 
 export default function Button({
@@ -23,6 +24,7 @@ export default function Button({
   fullWidth = false,
   style,
   textStyle,
+  leftIcon,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
@@ -46,17 +48,20 @@ export default function Button({
           size="small"
         />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            styles[`${variant}Text`],
-            styles[`${size}Text`],
-            isDisabled && styles.disabledText,
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
+        <>
+          {leftIcon && <View style={styles.iconWrap}>{leftIcon}</View>}
+          <Text
+            style={[
+              styles.text,
+              styles[`${variant}Text`],
+              styles[`${size}Text`],
+              isDisabled && styles.disabledText,
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        </>
       )}
     </Pressable>
   );
@@ -89,8 +94,8 @@ const styles = StyleSheet.create({
   },
   outline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26, 26, 26, 0.25)',
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -147,5 +152,8 @@ const styles = StyleSheet.create({
 
   disabledText: {
     opacity: 0.7,
+  },
+  iconWrap: {
+    marginRight: 8,
   },
 });

@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH_TARGET,
   },
   inputContainerFocused: {
-    borderColor: colors.primary,
+    borderColor: colors.gold,
   },
   inputContainerError: {
     borderColor: colors.error,

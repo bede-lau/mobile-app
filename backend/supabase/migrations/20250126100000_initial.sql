@@ -133,7 +133,6 @@ CREATE TABLE orders (
   total_myr NUMERIC(10, 2) NOT NULL CHECK (total_myr >= 0),
   status order_status NOT NULL DEFAULT 'pending',
   shipping_address JSONB NOT NULL DEFAULT '{}',
-  stripe_payment_intent_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

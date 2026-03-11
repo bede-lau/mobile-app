@@ -140,7 +140,6 @@ export async function createOrder(params: {
   items: CartItem[];
   totalMyr: number;
   shippingAddress: ShippingAddress;
-  stripePaymentIntentId: string;
 }): Promise<ApiResponse<Order>> {
   if (isMockMode()) return mockApi.createOrder(params);
 
@@ -161,7 +160,6 @@ export async function createOrder(params: {
         items: orderItems,
         total_myr: params.totalMyr,
         shipping_address: params.shippingAddress,
-        stripe_payment_intent_id: params.stripePaymentIntentId,
         status: 'paid',
       })
       .select()

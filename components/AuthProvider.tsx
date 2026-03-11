@@ -10,8 +10,8 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Timeout for profile fetch (8 seconds)
-const PROFILE_FETCH_TIMEOUT_MS = 8000;
+// Timeout for profile fetch (3 seconds)
+const PROFILE_FETCH_TIMEOUT_MS = 3000;
 
 /**
  * AuthProvider - Single Source of Truth for Auth State

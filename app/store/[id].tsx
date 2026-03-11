@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { ChevronLeft } from 'lucide-react-native';
 import { fetchStore } from '@/lib/api';
 import { useGarments } from '@/hooks/useGarments';
 import GarmentCard from '@/components/GarmentCard';
@@ -61,7 +62,7 @@ export default function StoreScreen() {
     () => (
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backText}>←</Text>
+          <ChevronLeft size={20} color={colors.primary} />
         </Pressable>
 
         {store?.banner_url && (
@@ -150,10 +151,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backText: {
-    fontSize: 20,
-    color: colors.primary,
   },
   banner: {
     width: SCREEN_WIDTH,

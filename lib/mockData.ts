@@ -169,15 +169,116 @@ const categoryNames: Record<GarmentCategory, string[]> = {
 const fabricTypes = ['Cotton', 'Polyester', 'Linen', 'Silk', 'Denim', 'Chiffon', 'Rayon', 'Wool', 'Nylon', 'Lycra'];
 const styleTagOptions = ['casual', 'formal', 'streetwear', 'minimalist', 'traditional', 'sporty', 'vintage', 'bohemian', 'preppy', 'elegant'];
 
+// Color variants for deduplicating garment names within a store
+const COLOR_VARIANTS = ['Ivory', 'Charcoal', 'Navy', 'Sage', 'Rust', 'Slate', 'Oat', 'Clay', 'Stone', 'Ink', 'Sand', 'Dusk', 'Fog', 'Mist'];
+
+// ─── Curated Unsplash Clothing Images ──────────────────────────────────────
+const CLOTHING_IMAGES: Record<GarmentCategory, string[]> = {
+  tops: [
+    'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=400&h=500&fit=crop',
+  ],
+  bottoms: [
+    'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=500&fit=crop',
+  ],
+  dresses: [
+    'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1612336307429-8a898d10e223?w=400&h=500&fit=crop',
+  ],
+  outerwear: [
+    'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1548624313-0396c75e4b1a?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1520975954732-35dd22299614?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=400&h=500&fit=crop',
+  ],
+  activewear: [
+    'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1515775538093-d2d95c5dc684?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=400&h=500&fit=crop',
+  ],
+  traditional: [
+    'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1614252369475-531eba835eb1?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1594112452609-8e5c1e25d4a0?w=400&h=500&fit=crop',
+  ],
+  accessories: [
+    'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&h=500&fit=crop',
+    'https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?w=400&h=500&fit=crop',
+  ],
+};
+
+// Curated fashion editorial images for feed thumbnails
+const FEED_IMAGES = [
+  'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1581044777550-4cfa60707998?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400&h=600&fit=crop',
+  'https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=400&h=600&fit=crop',
+];
+
+// Editorial feed titles (Vintage-Typewriter style)
+const FEED_TITLES = [
+  'Look 01 — The Silent Communicator',
+  'Look 02 — After the Rain',
+  'Look 03 — Geometry of Belonging',
+  'Look 04 — Soft Architecture',
+  'Look 05 — The Quiet Maximalist',
+  'Look 06 — Between Seasons',
+  'Look 07 — Urban Pastoral',
+  'Look 08 — The Last Light',
+  'Look 09 — Borrowed Comfort',
+  'Look 10 — Edges and Echoes',
+  'Look 11 — Still Life in Motion',
+  'Look 12 — The Gentle Rebel',
+  'Look 13 — Morning Ritual',
+  'Look 14 — Shadow Play',
+  'Look 15 — Woven Narratives',
+  'Look 16 — The Slowdown',
+  'Look 17 — Quiet Conversations',
+  'Look 18 — Dusk Palette',
+  'Look 19 — Unrehearsed',
+  'Look 20 — The Collector',
+];
+
 // ─── Generate Garments ──────────────────────────────────────────────────────
 
 const generateGarment = (storeId: string, index: number, category: GarmentCategory): Garment => {
-  const name = `${randomFromArray(categoryNames[category])} ${index + 1}`;
+  const baseName = categoryNames[category][index % categoryNames[category].length];
+  // If index exceeds unique names, append a color variant to avoid duplicates
+  const name = index < categoryNames[category].length
+    ? baseName
+    : `${COLOR_VARIANTS[index % COLOR_VARIANTS.length]} ${baseName}`;
   const price = randomPrice(29, 499);
   const isNew = Math.random() < 0.3;
   const hasSale = Math.random() < 0.2;
   const gender = category === 'traditional' ? randomFromArray(['male', 'female'] as GarmentGender[]) : randomFromArray(GENDERS);
   const availableSizes = SIZES.slice(randomInt(0, 2), randomInt(4, 6));
+
+  const images = CLOTHING_IMAGES[category];
+  const imageUrl = images[index % images.length];
 
   return {
     id: `garment-${storeId}-${category}-${index}`,
@@ -188,11 +289,11 @@ const generateGarment = (storeId: string, index: number, category: GarmentCatego
     gender,
     price_myr: price,
     sizes_available: availableSizes,
-    thumbnail_url: `https://picsum.photos/seed/${storeId}-${category}-${index}/400/500`,
+    thumbnail_url: imageUrl,
     images: [
-      `https://picsum.photos/seed/${storeId}-${category}-${index}/800/1000`,
-      `https://picsum.photos/seed/${storeId}-${category}-${index}-2/800/1000`,
-      `https://picsum.photos/seed/${storeId}-${category}-${index}-3/800/1000`,
+      imageUrl,
+      images[(index + 1) % images.length],
+      images[(index + 2) % images.length],
     ],
     glb_url: null,
     fabric_type: randomFromArray(fabricTypes),
@@ -221,12 +322,26 @@ const storeGarmentDistribution: Record<string, Partial<Record<GarmentCategory, n
   'store-010': { tops: 8, bottoms: 5, dresses: 10, outerwear: 4, activewear: 0, traditional: 6, accessories: 8 },
 };
 
-export const MOCK_GARMENTS: Garment[] = MOCK_STORES.flatMap((store) => {
-  const distribution = storeGarmentDistribution[store.id] ?? {};
-  return CATEGORIES.flatMap((category) => {
-    const count = distribution[category] ?? 0;
-    return Array.from({ length: count }, (_, i) => generateGarment(store.id, i, category));
-  });
+// Lazy-generated: only created on first access to avoid startup cost
+let _mockGarments: Garment[] | null = null;
+export const getMockGarments = (): Garment[] => {
+  if (!_mockGarments) {
+    _mockGarments = MOCK_STORES.flatMap((store) => {
+      const distribution = storeGarmentDistribution[store.id] ?? {};
+      return CATEGORIES.flatMap((category) => {
+        const count = distribution[category] ?? 0;
+        return Array.from({ length: count }, (_, i) => generateGarment(store.id, i, category));
+      });
+    });
+  }
+  return _mockGarments;
+};
+// Backward-compatible export (lazy getter)
+export const MOCK_GARMENTS: Garment[] = new Proxy([] as Garment[], {
+  get(_, prop) {
+    const data = getMockGarments();
+    return (data as any)[prop];
+  },
 });
 
 // ─── Generate Feed Items ────────────────────────────────────────────────────
@@ -241,14 +356,20 @@ const SAMPLE_VIDEO_URLS = [
   'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
 ];
 
+let _feedTitleIndex = 0;
 const generateFeedItem = (store: Store, index: number): OutfitFeedItem => {
-  const storeGarments = MOCK_GARMENTS.filter(g => g.store_id === store.id);
+  const storeGarments = getMockGarments().filter(g => g.store_id === store.id);
   const selectedGarments = storeGarments
     .sort(() => Math.random() - 0.5)
     .slice(0, randomInt(1, 4));
 
   // Use a rotating video URL from our sample list
   const videoIndex = (store.id.charCodeAt(store.id.length - 1) + index) % SAMPLE_VIDEO_URLS.length;
+
+  // Editorial title and curated feed image
+  const title = FEED_TITLES[_feedTitleIndex % FEED_TITLES.length];
+  _feedTitleIndex++;
+  const feedImageUrl = FEED_IMAGES[(_feedTitleIndex + index) % FEED_IMAGES.length];
 
   return {
     id: `feed-${store.id}-${index}`,
@@ -258,9 +379,9 @@ const generateFeedItem = (store: Store, index: number): OutfitFeedItem => {
       name: store.name,
       logo_url: store.logo_url,
     },
-    title: `${store.name} - Look ${index + 1}`,
+    title,
     video_url: SAMPLE_VIDEO_URLS[videoIndex],
-    thumbnail_url: `https://picsum.photos/seed/feed-${store.id}-${index}/400/600`,
+    thumbnail_url: feedImageUrl,
     garment_ids: selectedGarments.map(g => g.id),
     garments: selectedGarments.map(g => ({
       id: g.id,
@@ -276,29 +397,53 @@ const generateFeedItem = (store: Store, index: number): OutfitFeedItem => {
   };
 };
 
-// 3-5 feed items per store = ~40 total
-export const MOCK_FEED_ITEMS: OutfitFeedItem[] = MOCK_STORES.flatMap((store) => {
-  const count = randomInt(3, 5);
-  return Array.from({ length: count }, (_, i) => generateFeedItem(store, i));
-}).sort((a, b) => b.relevance_score - a.relevance_score);
+// Lazy-generated feed items
+let _mockFeedItems: OutfitFeedItem[] | null = null;
+export const getMockFeedItems = (): OutfitFeedItem[] => {
+  if (!_mockFeedItems) {
+    _mockFeedItems = MOCK_STORES.flatMap((store) => {
+      const count = randomInt(3, 5);
+      return Array.from({ length: count }, (_, i) => generateFeedItem(store, i));
+    }).sort((a, b) => b.relevance_score - a.relevance_score);
+  }
+  return _mockFeedItems;
+};
+export const MOCK_FEED_ITEMS: OutfitFeedItem[] = new Proxy([] as OutfitFeedItem[], {
+  get(_, prop) {
+    const data = getMockFeedItems();
+    return (data as any)[prop];
+  },
+});
 
-// ─── Mock User Likes (for testing favourites) ───────────────────────────────
-
-export const MOCK_USER_LIKES: { feed_item_id: string }[] = MOCK_FEED_ITEMS
-  .sort(() => Math.random() - 0.5)
-  .slice(0, 10)
-  .map(item => ({ feed_item_id: item.id }));
+// Lazy-generated user likes
+let _mockUserLikes: { feed_item_id: string }[] | null = null;
+export const getMockUserLikes = () => {
+  if (!_mockUserLikes) {
+    _mockUserLikes = getMockFeedItems()
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 10)
+      .map(item => ({ feed_item_id: item.id }));
+  }
+  return _mockUserLikes;
+};
+export const MOCK_USER_LIKES: { feed_item_id: string }[] = new Proxy([] as { feed_item_id: string }[], {
+  get(_, prop) {
+    const data = getMockUserLikes();
+    return (data as any)[prop];
+  },
+});
 
 // ─── Helper to get garments by IDs ──────────────────────────────────────────
 
 export const getGarmentsByIds = (ids: string[]): Garment[] => {
-  return MOCK_GARMENTS.filter(g => ids.includes(g.id));
+  const idSet = new Set(ids);
+  return getMockGarments().filter(g => idSet.has(g.id));
 };
 
 // ─── Category counts per store ──────────────────────────────────────────────
 
 export const getCategoryCounts = (storeId: string): Record<GarmentCategory, number> => {
-  const storeGarments = MOCK_GARMENTS.filter(g => g.store_id === storeId);
+  const storeGarments = getMockGarments().filter(g => g.store_id === storeId);
   return CATEGORIES.reduce((acc, cat) => {
     acc[cat] = storeGarments.filter(g => g.category === cat).length;
     return acc;

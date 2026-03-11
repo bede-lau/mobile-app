@@ -1,15 +1,14 @@
-import { View, Text, FlatList, Pressable, Image, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, Pressable, Image, ImageBackground, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import { Heart } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useDressingRoomStore } from '@/store/dressingRoomStore';
 import { useStores } from '@/hooks/useStores';
-import { colors, typography, spacing, radius, shadows } from '@/constants/theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '@/constants/theme';
 import type { Store } from '@/types';
-import { MOCK_GARMENTS } from '@/lib/mockData';
-import { isMockMode } from '@/lib/config';
 
 interface StoreCardProps {
-  store: Store | null; // null = Favourites
+  store: Store | null;
   onPress: () => void;
 }
 
@@ -20,41 +19,43 @@ function StoreCard({ store, onPress }: StoreCardProps) {
   if (store === null) {
     return (
       <Pressable style={[styles.card, styles.favouritesCard]} onPress={onPress}>
-        <View style={styles.favouritesIcon}>
-          <Ionicons name="heart" size={28} color={colors.accent} />
-        </View>
-        <Text style={styles.storeName}>{t('dressingRoom.favourites')}</Text>
-        <Text style={styles.storeLocation}>{t('dressingRoom.fromLikedOutfits')}</Text>
+        <Heart size={32} color={colors.textInverse} fill={colors.textInverse} />
+        <Text style={styles.favouritesText}>{t('dressingRoom.favourites')}</Text>
       </Pressable>
     );
   }
 
-  // Calculate garment count for this store (mock mode only for now)
-  const garmentCount = isMockMode()
-    ? MOCK_GARMENTS.filter(g => g.store_id === store.id).length
-    : 0;
+  const coverImage = store.banner_url || store.logo_url;
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      {store.logo_url ? (
-        <Image source={{ uri: store.logo_url }} style={styles.logo} />
+      {coverImage ? (
+        <ImageBackground
+          source={{ uri: coverImage }}
+          style={styles.cardImage}
+          imageStyle={styles.cardImageInner}
+        >
+          <View style={styles.cardGradient}>
+            <View style={styles.cardBottom}>
+              {store.logo_url && (
+                <Image source={{ uri: store.logo_url }} style={styles.storeAvatar} />
+              )}
+              <View style={styles.cardInfo}>
+                <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
+                {store.description && (
+                  <Text style={styles.storeDescription} numberOfLines={1}>
+                    {store.description}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        </ImageBackground>
       ) : (
-        <View style={[styles.logo, styles.logoPlaceholder]}>
-          <Ionicons name="storefront-outline" size={24} color={colors.textTertiary} />
-        </View>
-      )}
-      <Text style={styles.storeName} numberOfLines={1}>
-        {store.name}
-      </Text>
-      <Text style={styles.storeLocation} numberOfLines={1}>
-        {store.location}
-      </Text>
-      <Text style={styles.garmentCount}>
-        {t('dressingRoom.itemsCount', { count: garmentCount })}
-      </Text>
-      {store.is_verified && (
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={14} color={colors.secondary} />
+        <View style={[styles.cardImage, styles.cardPlaceholder]}>
+          <View style={styles.cardBottom}>
+            <Text style={styles.storeName} numberOfLines={1}>{store.name}</Text>
+          </View>
         </View>
       )}
     </Pressable>
@@ -85,7 +86,6 @@ export default function StoreSelector() {
     );
   }
 
-  // Prepend Favourites as first item (null represents Favourites)
   const dataWithFavourites: (Store | null)[] = [null, ...stores];
 
   return (
@@ -105,15 +105,16 @@ export default function StoreSelector() {
   );
 }
 
+const CARD_WIDTH = 140;
+const CARD_HEIGHT = 170;
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: {},
   sectionTitle: {
     ...typography.labelLarge,
     color: colors.textPrimary,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.md + spacing.sm + 8,   // 32px — shifts grid down 16px total
     paddingBottom: spacing.sm,
   },
   listContent: {
@@ -122,56 +123,69 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   card: {
-    width: 140,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    ...shadows.sm,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   favouritesCard: {
-    backgroundColor: colors.accentLight,
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  favouritesIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
-  logo: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.sm,
-    marginBottom: spacing.sm,
+  favouritesText: {
+    fontFamily: fontFamily.sansSemiBold,
+    fontSize: 14,
+    color: colors.textInverse,
+    letterSpacing: 0.5,
+    fontWeight: '600',
   },
-  logoPlaceholder: {
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardImageInner: {
+    borderRadius: 12,
+  },
+  cardPlaceholder: {
     backgroundColor: colors.backgroundSecondary,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    padding: spacing.sm,
+  },
+  cardGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  cardBottom: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+  },
+  storeAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  cardInfo: {
+    flex: 1,
   },
   storeName: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontFamily: fontFamily.sansBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-  storeLocation: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  storeDescription: {
+    fontFamily: fontFamily.sansRegular,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
     marginTop: 2,
-  },
-  garmentCount: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: spacing.xs,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    top: spacing.xs,
-    right: spacing.xs,
+    fontWeight: '400',
   },
   centered: {
     flex: 1,

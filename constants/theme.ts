@@ -1,57 +1,61 @@
 import { Platform, TextStyle, ViewStyle } from 'react-native';
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
+// Vintage-Typewriter warm beige / gold palette
 export const colors = {
-  // Primary palette — editorial near-black
-  primary: '#0A0A0A',
-  primaryLight: '#1A1A1A',
-  primaryMuted: '#3A3A3A',
+  // Primary palette — editorial dark
+  primary: '#1A1A1A',
+  primaryLight: '#3A3A3A',
+  primaryMuted: '#5A5A5A',
 
-  // Background
-  background: '#FAFAF7',
-  backgroundSecondary: '#F2F1ED',
-  surface: '#FFFFFF',
-  surfaceElevated: '#FFFFFF',
+  // Background — warm beige
+  background: '#F6F3EE',
+  backgroundSecondary: '#EDE9E3',
+  surface: '#FAF8F4',
+  surfaceElevated: '#FDFCF8',
 
-  // Accent — vermillion
+  // Gold — remapped to primary (no more warm gold in the UI)
+  gold: '#1A1A1A',
+  goldLight: '#3A3A3A',
+  goldHover: '#0A0A0A',
+
+  // Secondary
+  secondary: '#1A1A1A',
+
+  // Accent — vermillion (errors/destructive only)
   accent: '#E63946',
   accentLight: '#FDE8EA',
   accentDark: '#B82D38',
 
-  // Secondary accent — emerald
-  secondary: '#2D6A4F',
-  secondaryLight: '#E8F5ED',
-  secondaryDark: '#1B4332',
-
   // Text
-  textPrimary: '#0A0A0A',
-  textSecondary: '#6B6B6B',
-  textTertiary: '#9B9B9B',
-  textInverse: '#FAFAF7',
-  textAccent: '#E63946',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B665F', // Darkened for better contrast
+  textTertiary: '#6B665F', // Darkened for better contrast
+  textInverse: '#FAF8F4',
+  textAccent: '#1A1A1A',
 
   // Borders
-  border: '#E5E5E0',
-  borderLight: '#F0F0EB',
-  borderDark: '#CCCCCC',
+  border: '#E8E4DE',
+  borderLight: '#F0ECE6',
+  borderDark: '#D5D0C8',
 
   // Status
-  success: '#2D6A4F',
+  success: '#5A8A6A',
   warning: '#E6A817',
   error: '#E63946',
   info: '#2563EB',
 
   // Overlay
-  overlay: 'rgba(10, 10, 10, 0.5)',
-  overlayLight: 'rgba(10, 10, 10, 0.3)',
+  overlay: 'rgba(26, 26, 26, 0.5)',
+  overlayLight: 'rgba(26, 26, 26, 0.3)',
 
   // Skeleton
-  skeleton: '#E5E5E0',
-  skeletonHighlight: '#F0F0EB',
+  skeleton: '#E8E4DE',
+  skeletonHighlight: '#F0ECE6',
 
   // Tab bar
-  tabActive: '#0A0A0A',
-  tabInactive: '#9B9B9B',
+  tabActive: '#1A1A1A',
+  tabInactive: '#B5B0A8',
 } as const;
 
 // ─── Typography ──────────────────────────────────────────────────────────────
@@ -59,14 +63,14 @@ export const colors = {
 // Body: Sans-serif (DM Sans) — for body, UI elements
 
 export const fontFamily = {
-  serifRegular: 'PlayfairDisplay_400Regular',
-  serifMedium: 'PlayfairDisplay_500Medium',
-  serifSemiBold: 'PlayfairDisplay_600SemiBold',
-  serifBold: 'PlayfairDisplay_700Bold',
-  sansRegular: 'DMSans_400Regular',
-  sansMedium: 'DMSans_500Medium',
-  sansSemiBold: 'DMSans_600SemiBold',
-  sansBold: 'DMSans_700Bold',
+  serifRegular: 'PlayfairDisplay-Regular',
+  serifMedium: 'PlayfairDisplay-Medium',
+  serifSemiBold: 'PlayfairDisplay-SemiBold',
+  serifBold: 'PlayfairDisplay-Bold',
+  sansRegular: 'DMSans-Regular',
+  sansMedium: 'DMSans-Medium',
+  sansSemiBold: 'DMSans-SemiBold',
+  sansBold: 'DMSans-Bold',
 } as const;
 
 export const typography = {
@@ -76,18 +80,21 @@ export const typography = {
     fontSize: 40,
     lineHeight: 44,
     letterSpacing: -1.5,
+    fontWeight: '700',
   } as TextStyle,
   displayMedium: {
     fontFamily: fontFamily.serifBold,
     fontSize: 32,
     lineHeight: 36,
     letterSpacing: -1,
+    fontWeight: '700',
   } as TextStyle,
   displaySmall: {
     fontFamily: fontFamily.serifSemiBold,
     fontSize: 28,
     lineHeight: 32,
     letterSpacing: -0.8,
+    fontWeight: '600',
   } as TextStyle,
 
   // Headings
@@ -96,18 +103,21 @@ export const typography = {
     fontSize: 24,
     lineHeight: 28,
     letterSpacing: -0.5,
+    fontWeight: '600',
   } as TextStyle,
   headingMedium: {
     fontFamily: fontFamily.serifMedium,
     fontSize: 20,
     lineHeight: 24,
     letterSpacing: -0.3,
+    fontWeight: '500',
   } as TextStyle,
   headingSmall: {
     fontFamily: fontFamily.sansSemiBold,
     fontSize: 18,
     lineHeight: 22,
     letterSpacing: -0.2,
+    fontWeight: '600',
   } as TextStyle,
 
   // Body
@@ -116,18 +126,21 @@ export const typography = {
     fontSize: 16,
     lineHeight: 24,
     letterSpacing: 0,
+    fontWeight: '400',
   } as TextStyle,
   bodyMedium: {
     fontFamily: fontFamily.sansRegular,
     fontSize: 14,
     lineHeight: 20,
     letterSpacing: 0,
+    fontWeight: '400',
   } as TextStyle,
   bodySmall: {
     fontFamily: fontFamily.sansRegular,
     fontSize: 12,
     lineHeight: 16,
     letterSpacing: 0.1,
+    fontWeight: '400',
   } as TextStyle,
 
   // Labels / UI
@@ -137,6 +150,7 @@ export const typography = {
     lineHeight: 18,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+    fontWeight: '600',
   } as TextStyle,
   labelMedium: {
     fontFamily: fontFamily.sansMedium,
@@ -144,6 +158,7 @@ export const typography = {
     lineHeight: 16,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+    fontWeight: '500',
   } as TextStyle,
   labelSmall: {
     fontFamily: fontFamily.sansMedium,
@@ -151,6 +166,7 @@ export const typography = {
     lineHeight: 14,
     letterSpacing: 1,
     textTransform: 'uppercase',
+    fontWeight: '500',
   } as TextStyle,
 
   // Captions
@@ -159,6 +175,7 @@ export const typography = {
     fontSize: 12,
     lineHeight: 16,
     letterSpacing: 0.2,
+    fontWeight: '400',
   } as TextStyle,
 
   // Small caps (editorial style tags)
@@ -168,6 +185,7 @@ export const typography = {
     lineHeight: 14,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+    fontWeight: '500',
   } as TextStyle,
 } as const;
 

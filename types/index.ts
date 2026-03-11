@@ -140,7 +140,6 @@ export interface Order {
   total_myr: number;
   status: OrderStatus;
   shipping_address: ShippingAddress;
-  stripe_payment_intent_id: string | null;
   created_at: string;
   updated_at: string;
 }

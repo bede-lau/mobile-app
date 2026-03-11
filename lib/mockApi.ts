@@ -148,7 +148,6 @@ export async function createOrder(params: {
   items: CartItem[];
   totalMyr: number;
   shippingAddress: ShippingAddress;
-  stripePaymentIntentId: string;
 }): Promise<ApiResponse<Order>> {
   await delay(500);
   logMock('createOrder', params);
@@ -167,7 +166,6 @@ export async function createOrder(params: {
     total_myr: params.totalMyr,
     status: 'paid',
     shipping_address: params.shippingAddress,
-    stripe_payment_intent_id: params.stripePaymentIntentId,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,75 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+} from 'react-native-reanimated';
+import {
+  Camera,
+  ChevronRight,
+  User as UserIcon,
+  Bell,
+  Shield,
+  Globe,
+} from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserStore } from '@/store/userStore';
 import { useAvatarStore } from '@/store/avatarStore';
-import { supabase } from '@/lib/supabase';
-import { colors, typography, spacing, radius, shadows } from '@/constants/theme';
-import type { Order } from '@/types';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '@/constants/theme';
+
+// Style DNA data — derived from user style_preferences
+const STYLE_DNA_LABELS = ['Minimal', 'Classic', 'Modern', 'Street', 'Elegant', 'Experimental'];
+
+function getStyleDNA(preferences: string[]): { label: string; value: number }[] {
+  const mapping: Record<string, string[]> = {
+    Minimal: ['minimalist'],
+    Classic: ['formal', 'preppy'],
+    Modern: ['streetwear', 'sporty'],
+    Street: ['streetwear', 'bohemian'],
+    Elegant: ['elegant', 'formal'],
+    Experimental: ['vintage', 'bohemian'],
+  };
+
+  return STYLE_DNA_LABELS.map((label) => {
+    const keys = mapping[label] || [];
+    const matched = keys.filter((k) => preferences.includes(k)).length;
+    const value = keys.length > 0 ? Math.round((matched / keys.length) * 100) : 0;
+    return { label, value: value > 0 ? value : Math.floor(Math.random() * 30 + 10) };
+  });
+}
+
+function getStyleLabel(preferences: string[]): string {
+  if (!preferences || preferences.length === 0) return 'Undiscovered';
+  const labels: string[] = [];
+  if (preferences.includes('elegant')) labels.push('Elegant');
+  if (preferences.includes('minimalist')) labels.push('Minimalist');
+  if (preferences.includes('formal')) labels.push('Classic');
+  if (preferences.includes('streetwear')) labels.push('Modern');
+  if (preferences.includes('vintage')) labels.push('Vintage');
+  if (labels.length === 0) labels.push(preferences[0].charAt(0).toUpperCase() + preferences[0].slice(1));
+  return labels.slice(0, 2).join(' ');
+}
+
+function AnimatedBar({ value, delay }: { value: number; delay: number }) {
+  const width = useSharedValue(0);
+
+  useEffect(() => {
+    width.value = withDelay(delay, withTiming(value, { duration: 800 }));
+  }, [value, delay]);
+
+  const barStyle = useAnimatedStyle(() => ({
+    width: `${width.value}%`,
+  }));
+
+  return (
+    <View style={styles.barTrack}>
+      <Animated.View style={[styles.barFill, barStyle]} />
+    </View>
+  );
+}
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
@@ -24,20 +87,10 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user } = useUserStore();
   const { measurements } = useAvatarStore();
-  const [orders, setOrders] = useState<Order[]>([]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    (async () => {
-      const { data } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (data) setOrders(data as Order[]);
-    })();
-  }, [user?.id]);
+  const stylePrefs = user?.style_preferences || [];
+  const styleDNA = getStyleDNA(stylePrefs);
+  const styleLabel = getStyleLabel(stylePrefs);
 
   const handleLogout = useCallback(async () => {
     Alert.alert(t('auth.logout'), '', [
@@ -53,20 +106,9 @@ export default function ProfileScreen() {
     ]);
   }, [signOut, router, t]);
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-      case 'delivered':
-        return colors.secondary;
-      case 'shipped':
-        return colors.info;
-      case 'cancelled':
-      case 'refunded':
-        return colors.error;
-      default:
-        return colors.warning;
-    }
-  };
+  const handleRescan = useCallback(() => {
+    router.push('/(tabs)/scanner');
+  }, [router]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -82,105 +124,105 @@ export default function ProfileScreen() {
               </Text>
             </View>
           )}
-          <Text style={styles.name}>{user?.full_name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-          <Text style={styles.memberSince}>
-            {t('profile.memberSince', {
-              date: user?.created_at
-                ? new Date(user.created_at).toLocaleDateString()
-                : '',
-            })}
-          </Text>
-        </View>
-
-        {/* Sections */}
-        <View style={styles.sectionGroup}>
-          <Text style={styles.sectionHeader}>{t('profile.account')}</Text>
-          <Pressable style={styles.menuItem}>
-            <Text style={styles.menuText}>{t('profile.editProfile')}</Text>
-            <Text style={styles.menuArrow}>→</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.sectionGroup}>
-          <Text style={styles.sectionHeader}>{t('profile.bodyMeasurements')}</Text>
-          {measurements ? (
-            <View style={styles.measurementsGrid}>
-              {Object.entries(measurements).map(([key, value]) => (
-                <View key={key} style={styles.measurementItem}>
-                  <Text style={styles.measurementLabel}>
-                    {key.replace('_cm', '').replace('_', ' ')}
-                  </Text>
-                  <Text style={styles.measurementValue}>{value}cm</Text>
-                </View>
-              ))}
+          <View style={styles.headerInfo}>
+            <Text style={styles.yourProfile}>Your Profile</Text>
+            <Text style={styles.userName}>{user?.full_name || '—'}</Text>
+            <View style={styles.styleLabelChip}>
+              <Text style={styles.styleLabelText}>{styleLabel}</Text>
             </View>
-          ) : (
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => router.push('/(tabs)/scanner')}
-            >
-              <Text style={styles.menuText}>{t('size.scanNow')}</Text>
-              <Text style={styles.menuArrow}>→</Text>
-            </Pressable>
-          )}
+          </View>
         </View>
 
-        <View style={styles.sectionGroup}>
-          <Text style={styles.sectionHeader}>{t('profile.preferences')}</Text>
-          <Pressable style={styles.menuItem}>
-            <Text style={styles.menuText}>{t('profile.language')}</Text>
-            <Text style={styles.menuValue}>{user?.preferred_language?.toUpperCase()}</Text>
-          </Pressable>
-          {user?.style_preferences && user.style_preferences.length > 0 && (
-            <View style={styles.styleChips}>
-              {user.style_preferences.map((style) => (
-                <View key={style} style={styles.chip}>
-                  <Text style={styles.chipText}>{style}</Text>
+        {/* Styled DNA */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What style are you?</Text>
+          <View style={styles.dnaContainer}>
+            {styleDNA.map((item, index) => (
+              <View key={item.label} style={styles.dnaRow}>
+                <Text style={styles.dnaLabel}>{item.label}</Text>
+                <View style={styles.dnaBarWrapper}>
+                  <AnimatedBar value={item.value} delay={index * 150} />
                 </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        <View style={styles.sectionGroup}>
-          <Text style={styles.sectionHeader}>{t('profile.orderHistory')}</Text>
-          {orders.length === 0 ? (
-            <Text style={styles.emptyText}>{t('profile.noOrders')}</Text>
-          ) : (
-            orders.map((order) => (
-              <View key={order.id} style={styles.orderItem}>
-                <View>
-                  <Text style={styles.orderId}>#{order.id.slice(0, 8)}</Text>
-                  <Text style={styles.orderDate}>
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={styles.orderRight}>
-                  <Text style={styles.orderTotal}>RM {order.total_myr.toFixed(2)}</Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: statusColor(order.status) + '20' },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.statusText, { color: statusColor(order.status) }]}
-                    >
-                      {order.status}
-                    </Text>
-                  </View>
-                </View>
+                <Text style={styles.dnaValue}>{item.value}%</Text>
               </View>
-            ))
-          )}
+            ))}
+          </View>
         </View>
 
-        <View style={styles.sectionGroup}>
-          <Pressable style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>{t('auth.logout')}</Text>
-          </Pressable>
+        {/* Measurements */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Measurements</Text>
+          <View style={styles.measureGrid}>
+            <View style={styles.measureCard}>
+              <Text style={styles.measureValue}>
+                {user?.height_cm ? `${user.height_cm}` : '—'}
+              </Text>
+              <Text style={styles.measureUnit}>cm</Text>
+              <Text style={styles.measureLabel}>Height</Text>
+            </View>
+            <View style={styles.measureCard}>
+              <Text style={styles.measureValue}>
+                {measurements?.waist_cm ? 'Regular' : '—'}
+              </Text>
+              <Text style={styles.measureLabel}>Fit</Text>
+            </View>
+          </View>
         </View>
+
+        {/* Preferences */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+          <View style={styles.prefCard}>
+            <View style={styles.prefRow}>
+              <Text style={styles.prefLabel}>Budget Range</Text>
+              <Text style={styles.prefValue}>RM 150 – 700</Text>
+            </View>
+            <View style={styles.prefDivider} />
+            <View style={styles.prefRow}>
+              <Text style={styles.prefLabel}>Color Palette</Text>
+              <View style={styles.colorSwatches}>
+                {['#1A1A1A', '#D4A373', '#5A8A6A', '#FAF8F4', '#B82D38'].map((c) => (
+                  <View key={c} style={[styles.swatch, { backgroundColor: c }]} />
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Rescan — prominent gold CTA */}
+        <Pressable style={styles.rescanCard} onPress={handleRescan}>
+          <Camera size={24} color={colors.textInverse} />
+          <View style={styles.rescanText}>
+            <Text style={styles.rescanTitle}>Rescan Body</Text>
+            <Text style={styles.rescanSubtitle}>Update your measurements</Text>
+          </View>
+          <ChevronRight size={20} color={colors.textInverse} />
+        </Pressable>
+
+        {/* Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.settingsCard}>
+            {[
+              { icon: UserIcon, label: t('profile.account') || 'Account' },
+              { icon: Bell, label: 'Notifications' },
+              { icon: Shield, label: 'Privacy' },
+              { icon: Globe, label: t('profile.language') || 'Language', value: user?.preferred_language?.toUpperCase() },
+            ].map((item, index) => (
+              <Pressable key={item.label} style={[styles.settingRow, index > 0 && styles.settingBorder]}>
+                <item.icon size={18} color={colors.textSecondary} />
+                <Text style={styles.settingLabel}>{item.label}</Text>
+                {item.value && <Text style={styles.settingValue}>{item.value}</Text>}
+                <ChevronRight size={16} color={colors.textTertiary} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Logout */}
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>{t('auth.logout')}</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -194,16 +236,36 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.xxl,
   },
+
+  // Header
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.md,
+    gap: spacing.md,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  yourProfile: {
+    ...typography.displaySmall,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  userName: {
+    fontFamily: fontFamily.sansMedium,
+    fontWeight: '500',
+    fontSize: 15,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: spacing.md,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   avatarPlaceholder: {
     backgroundColor: colors.primary,
@@ -211,138 +273,229 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarInitial: {
-    ...typography.displaySmall,
+    ...typography.headingMedium,
     color: colors.textInverse,
   },
-  name: {
-    ...typography.headingLarge,
-    color: colors.textPrimary,
-  },
-  email: {
-    ...typography.bodyMedium,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  memberSince: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: spacing.xs,
-  },
-  sectionGroup: {
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  sectionHeader: {
-    ...typography.labelLarge,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
-  },
-  menuText: {
-    ...typography.bodyLarge,
-    color: colors.textPrimary,
-  },
-  menuValue: {
-    ...typography.bodyMedium,
-    color: colors.textSecondary,
-  },
-  menuArrow: {
-    fontSize: 16,
-    color: colors.textTertiary,
-  },
-  measurementsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  measurementItem: {
-    width: '47%',
-    backgroundColor: colors.surface,
-    padding: spacing.sm,
-    borderRadius: radius.sm,
-    ...shadows.sm,
-  },
-  measurementLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'capitalize',
-  },
-  measurementValue: {
-    ...typography.headingSmall,
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  styleChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  chip: {
-    backgroundColor: colors.backgroundSecondary,
+  styleLabelChip: {
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.xs,
+    alignSelf: 'flex-start',
   },
-  chipText: {
-    ...typography.labelSmall,
+  styleLabelText: {
+    fontFamily: fontFamily.sansSemiBold,
+    fontWeight: '600',
+    fontSize: 11,
+    color: colors.textInverse,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+
+  // Sections
+  section: {
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    fontFamily: fontFamily.sansSemiBold,
+    fontWeight: '600',
+    fontSize: 14,
+    color: colors.textSecondary,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: spacing.md,
+  },
+
+  // Styled DNA
+  dnaContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  dnaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  dnaLabel: {
+    fontFamily: fontFamily.sansMedium,
+    fontWeight: '500',
+    fontSize: 13,
+    color: colors.textPrimary,
+    width: 90,
+  },
+  dnaBarWrapper: {
+    flex: 1,
+    marginHorizontal: spacing.sm,
+  },
+  barTrack: {
+    height: 6,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  dnaValue: {
+    fontFamily: fontFamily.sansMedium,
+    fontWeight: '500',
+    fontSize: 12,
+    color: colors.textSecondary,
+    width: 36,
+    textAlign: 'right',
+  },
+
+  // Measurements
+  measureGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  measureCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  measureValue: {
+    fontFamily: fontFamily.serifBold,
+    fontWeight: '700',
+    fontSize: 22,
+    color: colors.primary,
+  },
+  measureUnit: {
+    fontFamily: fontFamily.sansRegular,
+    fontWeight: '400',
+    fontSize: 12,
     color: colors.textSecondary,
   },
-  emptyText: {
-    ...typography.bodyMedium,
-    color: colors.textTertiary,
-    paddingVertical: spacing.md,
+  measureLabel: {
+    fontFamily: fontFamily.sansMedium,
+    fontWeight: '500',
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  orderItem: {
+
+  // Preferences
+  prefCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  prefRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderLight,
+    paddingVertical: spacing.sm,
   },
-  orderId: {
-    ...typography.bodyMedium,
-    fontWeight: '600',
+  prefDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  prefLabel: {
+    fontFamily: fontFamily.sansMedium,
+    fontWeight: '500',
+    fontSize: 14,
     color: colors.textPrimary,
   },
-  orderDate: {
-    ...typography.caption,
+  prefValue: {
+    fontFamily: fontFamily.sansRegular,
+    fontWeight: '400',
+    fontSize: 14,
     color: colors.textSecondary,
+  },
+  colorSwatches: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  swatch: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  // Rescan
+  rescanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderRadius: 12,
+    gap: spacing.md,
+  },
+  rescanText: {
+    flex: 1,
+  },
+  rescanTitle: {
+    fontFamily: fontFamily.sansSemiBold,
+    fontWeight: '600',
+    fontSize: 16,
+    color: colors.textInverse,
+  },
+  rescanSubtitle: {
+    fontFamily: fontFamily.sansRegular,
+    fontWeight: '400',
+    fontSize: 13,
+    color: 'rgba(250,248,244,0.7)',
     marginTop: 2,
   },
-  orderRight: {
-    alignItems: 'flex-end',
+
+  // Settings
+  settingsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    ...shadows.sm,
+    overflow: 'hidden',
   },
-  orderTotal: {
-    ...typography.bodyMedium,
-    fontWeight: '600',
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  settingBorder: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  settingLabel: {
+    flex: 1,
+    fontFamily: fontFamily.sansRegular,
+    fontWeight: '400',
+    fontSize: 15,
     color: colors.textPrimary,
   },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.xs,
-    marginTop: spacing.xs,
+  settingValue: {
+    fontFamily: fontFamily.sansRegular,
+    fontWeight: '400',
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginRight: spacing.xs,
   },
-  statusText: {
-    ...typography.labelSmall,
-    textTransform: 'capitalize',
-  },
+
+  // Logout
   logoutButton: {
     paddingVertical: spacing.md,
     alignItems: 'center',
+    marginHorizontal: spacing.md,
   },
   logoutText: {
-    ...typography.bodyLarge,
-    color: colors.error,
+    fontFamily: fontFamily.sansSemiBold,
     fontWeight: '600',
+    fontSize: 15,
+    color: colors.error,
   },
 });

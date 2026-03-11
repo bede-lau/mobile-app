@@ -6,17 +6,18 @@ import {
   StyleSheet,
   Dimensions,
   Image,
+  AppState,
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Heart } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { colors, typography, spacing, radius, shadows } from '@/constants/theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '@/constants/theme';
 import type { OutfitFeedItem } from '@/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -32,20 +33,33 @@ export default function FeedItem({ item, isActive, isLiked, onLike }: FeedItemPr
   const router = useRouter();
   const likeScale = useSharedValue(1);
   const [videoError, setVideoError] = useState(false);
+  const [appActive, setAppActive] = useState(AppState.currentState === 'active');
 
-  const player = useVideoPlayer(item.video_url, (p) => {
-    p.loop = true;
-    p.muted = false;
-  });
+  // Track app state to avoid creating video players when activity is unavailable
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      setAppActive(state === 'active');
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Only create the player when the app is active and we have a valid URL
+  const player = useVideoPlayer(
+    appActive && item.video_url ? item.video_url : null,
+    (p) => {
+      p.loop = true;
+      p.muted = false;
+    }
+  );
 
   // Listen for video errors via status changes
   useEffect(() => {
+    if (!player) return;
     const subscription = player.addListener('statusChange', (payload) => {
       if (payload.error) {
         console.warn('[FeedItem] Video error:', payload.error.message);
         setVideoError(true);
       }
-      // Also detect if the video is stuck in 'error' status
       if (payload.status === 'error') {
         setVideoError(true);
       }
@@ -54,12 +68,18 @@ export default function FeedItem({ item, isActive, isLiked, onLike }: FeedItemPr
   }, [player]);
 
   useEffect(() => {
-    if (isActive && !videoError) {
-      player.play();
-    } else {
-      player.pause();
+    if (!player) return;
+    try {
+      if (isActive && !videoError && appActive) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    } catch (e) {
+      console.warn('[FeedItem] Player control error:', e);
+      setVideoError(true);
     }
-  }, [isActive, player, videoError]);
+  }, [isActive, player, videoError, appActive]);
 
   const handleLike = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -86,15 +106,11 @@ export default function FeedItem({ item, isActive, isLiked, onLike }: FeedItemPr
     [router]
   );
 
-  const navigateToStore = useCallback(() => {
-    router.push(`/store/${item.store_id}`);
-  }, [router, item.store_id]);
-
   return (
     <View style={styles.container}>
       {/* Video background */}
       <Pressable style={styles.videoContainer} onPress={handleDoubleTap}>
-        {item.video_url && !videoError ? (
+        {item.video_url && !videoError && player ? (
           <VideoView
             player={player}
             style={styles.video}
@@ -113,44 +129,18 @@ export default function FeedItem({ item, isActive, isLiked, onLike }: FeedItemPr
       {/* Overlay gradient */}
       <View style={styles.gradient} />
 
-      {/* Right side actions */}
+      {/* Right side actions — vertically centered */}
       <View style={styles.actions}>
-        {/* Like button */}
+        {/* Like button in frosted glass circle */}
         <Pressable style={styles.actionButton} onPress={handleLike}>
-          <Animated.View style={likeAnimatedStyle}>
-            <Ionicons
-              name={isLiked ? 'heart' : 'heart-outline'}
-              size={32}
-              color={isLiked ? colors.accent : colors.textInverse}
-            />
+          <Animated.View style={[styles.frostedCircle, likeAnimatedStyle]}>
+            <Heart size={24} color={isLiked ? '#F87171' : colors.textInverse} fill={isLiked ? '#F87171' : 'transparent'} strokeWidth={1.5} />
           </Animated.View>
-          <Text style={styles.actionCount}>{item.likes_count}</Text>
-        </Pressable>
-
-        {/* Store button */}
-        <Pressable style={styles.actionButton} onPress={navigateToStore}>
-          {item.store.logo_url ? (
-            <Image source={{ uri: item.store.logo_url }} style={styles.storeLogo} />
-          ) : (
-            <View style={styles.storeLogoPlaceholder}>
-              <Ionicons name="storefront-outline" size={24} color={colors.textInverse} />
-            </View>
-          )}
         </Pressable>
       </View>
 
       {/* Bottom info */}
       <View style={styles.bottomInfo}>
-        {/* Store name */}
-        <Pressable onPress={navigateToStore}>
-          <Text style={styles.storeName}>{item.store.name}</Text>
-        </Pressable>
-
-        {/* Title */}
-        <Text style={styles.title} numberOfLines={2}>
-          {item.title}
-        </Text>
-
         {/* Garment thumbnails */}
         {item.garments.length > 0 && (
           <View style={styles.garmentStrip}>
@@ -170,16 +160,6 @@ export default function FeedItem({ item, isActive, isLiked, onLike }: FeedItemPr
           </View>
         )}
 
-        {/* Tags */}
-        {item.style_tags.length > 0 && (
-          <View style={styles.tags}>
-            {item.style_tags.slice(0, 3).map((tag) => (
-              <Text key={tag} style={styles.tag}>
-                #{tag}
-              </Text>
-            ))}
-          </View>
-        )}
       </View>
     </View>
   );
@@ -211,7 +191,7 @@ const styles = StyleSheet.create({
   actions: {
     position: 'absolute',
     right: spacing.md,
-    bottom: 140,
+    top: SCREEN_HEIGHT / 2 - 22,
     alignItems: 'center',
     gap: spacing.lg,
   },
@@ -219,50 +199,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
-  actionCount: {
-    ...typography.labelSmall,
-    color: colors.textInverse,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  storeLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: colors.textInverse,
-  },
-  storeLogoPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  frostedCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.textInverse,
   },
   bottomInfo: {
     position: 'absolute',
     bottom: 100,
     left: spacing.md,
     right: 80,
-  },
-  storeName: {
-    ...typography.labelMedium,
-    color: colors.textInverse,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  title: {
-    ...typography.headingMedium,
-    color: colors.textInverse,
-    marginTop: spacing.xs,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   garmentStrip: {
     flexDirection: 'row',
@@ -272,9 +221,15 @@ const styles = StyleSheet.create({
   garmentThumb: {
     width: 64,
     backgroundColor: colors.surface,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     overflow: 'hidden',
-    ...shadows.sm,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   garmentImage: {
     width: 64,
@@ -283,18 +238,11 @@ const styles = StyleSheet.create({
   },
   garmentPrice: {
     ...typography.caption,
+    fontFamily: fontFamily.sansBold,
+    fontSize: 9, // Slightly smaller text
     color: colors.textPrimary,
     textAlign: 'center',
     paddingVertical: spacing.xs,
-  },
-  tags: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  tag: {
-    ...typography.caption,
-    color: colors.textInverse,
-    opacity: 0.8,
+    paddingHorizontal: 4, // Creating gap between it and borders
   },
 });

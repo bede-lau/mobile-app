@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
+import { View, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts } from 'expo-font';
-import StripeProviderWrapper from '@/components/StripeProviderWrapper';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AuthProvider from '@/components/AuthProvider';
 import '@/lib/i18n';
+
+import { useFonts } from 'expo-font';
 
 console.log('[DEBUG] _layout.tsx loading...');
 
@@ -15,18 +17,17 @@ export default function RootLayout() {
   console.log('[DEBUG] RootLayout rendering...');
 
   const [fontsLoaded] = useFonts({
-    PlayfairDisplay_400Regular: require('@/assets/fonts/PlayfairDisplay-Regular.ttf'),
-    PlayfairDisplay_500Medium: require('@/assets/fonts/PlayfairDisplay-Medium.ttf'),
-    PlayfairDisplay_600SemiBold: require('@/assets/fonts/PlayfairDisplay-SemiBold.ttf'),
-    PlayfairDisplay_700Bold: require('@/assets/fonts/PlayfairDisplay-Bold.ttf'),
-    DMSans_400Regular: require('@/assets/fonts/DMSans-Regular.ttf'),
-    DMSans_500Medium: require('@/assets/fonts/DMSans-Medium.ttf'),
-    DMSans_600SemiBold: require('@/assets/fonts/DMSans-SemiBold.ttf'),
-    DMSans_700Bold: require('@/assets/fonts/DMSans-Bold.ttf'),
+    'PlayfairDisplay-Regular': require('../assets/fonts/PlayfairDisplay-Regular.ttf'),
+    'PlayfairDisplay-Medium': require('../assets/fonts/PlayfairDisplay-Medium.ttf'),
+    'PlayfairDisplay-SemiBold': require('../assets/fonts/PlayfairDisplay-SemiBold.ttf'),
+    'PlayfairDisplay-Bold': require('../assets/fonts/PlayfairDisplay-Bold.ttf'),
+    'DMSans-Regular': require('../assets/fonts/DMSans-Regular.ttf'),
+    'DMSans-Medium': require('../assets/fonts/DMSans-Medium.ttf'),
+    'DMSans-SemiBold': require('../assets/fonts/DMSans-SemiBold.ttf'),
+    'DMSans-Bold': require('../assets/fonts/DMSans-Bold.ttf'),
   });
 
   useEffect(() => {
-    console.log('[DEBUG] fontsLoaded:', fontsLoaded);
     if (fontsLoaded) {
       console.log('[DEBUG] Hiding splash screen...');
       SplashScreen.hideAsync();
@@ -34,17 +35,20 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   if (!fontsLoaded) {
-    console.log('[DEBUG] Fonts not loaded yet, returning null');
     return null;
   }
 
-  console.log('[DEBUG] Fonts loaded, rendering app...');
-
   return (
-    <StripeProviderWrapper>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#FAFAF7' },
+          }}
+        >
+          <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="garment/[id]" options={{ presentation: 'card' }} />
@@ -54,6 +58,6 @@ export default function RootLayout() {
           <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
         </Stack>
       </AuthProvider>
-    </StripeProviderWrapper>
+    </GestureHandlerRootView>
   );
 }

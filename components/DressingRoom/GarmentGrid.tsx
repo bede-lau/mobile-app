@@ -1,38 +1,58 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View, Text, FlatList, Pressable, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Shirt } from 'lucide-react-native';
 import { useDressingRoomStore } from '@/store/dressingRoomStore';
 import { useGarments } from '@/hooks/useGarments';
 import { useFavourites } from '@/hooks/useFavourites';
-import { colors, typography, spacing, radius, shadows } from '@/constants/theme';
+import { colors, typography, spacing, radius, shadows, fontFamily } from '@/constants/theme';
 import type { Garment } from '@/types';
 
 interface GarmentGridProps {
   selectedGarmentIds: string[];
-  onToggleGarment: (id: string) => void;
+  onToggleGarment: (garment: Garment) => void;
 }
 
 interface GarmentCardProps {
   item: Garment;
   isSelected: boolean;
-  onPress: () => void;
-  onLongPress: () => void;
+  onToggle: () => void;
+  onDoubleTap: () => void;
 }
 
-function GarmentCard({ item, isSelected, onPress, onLongPress }: GarmentCardProps) {
+function GarmentCard({ item, isSelected, onToggle, onDoubleTap }: GarmentCardProps) {
+  const lastTapRef = useRef<number>(0);
+
+  function handlePress() {
+    // Selected card: single tap always deselects — no double-tap ambiguity
+    if (isSelected) {
+      lastTapRef.current = 0;
+      onToggle();
+      return;
+    }
+    // Unselected card: single tap selects, rapid second tap navigates to detail
+    const now = Date.now();
+    if (now - lastTapRef.current <= 200) {
+      lastTapRef.current = 0;
+      onDoubleTap();
+    } else {
+      lastTapRef.current = now;
+      onToggle();
+    }
+  }
+
   return (
     <Pressable
       style={[styles.card, isSelected && styles.cardSelected]}
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={handlePress}
     >
       {item.thumbnail_url ? (
         <Image source={{ uri: item.thumbnail_url }} style={styles.image} />
       ) : (
         <View style={[styles.image, styles.placeholder]}>
-          <Text style={styles.placeholderText}>👕</Text>
+          <Shirt size={32} color={colors.textTertiary} />
         </View>
       )}
       <Text style={styles.name} numberOfLines={1}>
@@ -106,14 +126,14 @@ export default function GarmentGrid({ selectedGarmentIds, onToggleGarment }: Gar
     }
   }, [selectedStore?.id, selectedCategory, isFavourites]);
 
-  const handleGarmentPress = useCallback(
-    (id: string) => {
-      onToggleGarment(id);
+  const handleGarmentToggle = useCallback(
+    (garment: Garment) => {
+      onToggleGarment(garment);
     },
     [onToggleGarment]
   );
 
-  const handleGarmentLongPress = useCallback(
+  const handleGarmentDoubleTap = useCallback(
     (id: string) => {
       router.push(`/garment/${id}`);
     },
@@ -152,12 +172,13 @@ export default function GarmentGrid({ selectedGarmentIds, onToggleGarment }: Gar
         <GarmentCard
           item={item}
           isSelected={selectedGarmentIds.includes(item.id)}
-          onPress={() => handleGarmentPress(item.id)}
-          onLongPress={() => handleGarmentLongPress(item.id)}
+          onToggle={() => handleGarmentToggle(item)}
+          onDoubleTap={() => handleGarmentDoubleTap(item.id)}
         />
       )}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.listContent}
+      extraData={selectedGarmentIds}
       onEndReached={isFavourites ? undefined : loadMore}
       onEndReachedThreshold={0.5}
     />
@@ -175,15 +196,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.sm,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
     ...shadows.sm,
   },
   cardSelected: {
-    borderWidth: 2,
     borderColor: colors.primary,
   },
   image: {
     width: '100%',
-    height: 130,
+    height: 114,
     backgroundColor: colors.backgroundSecondary,
   },
   placeholder: {
@@ -195,13 +217,14 @@ const styles = StyleSheet.create({
   },
   name: {
     ...typography.bodySmall,
-    fontWeight: '500',
+    fontFamily: fontFamily.serifMedium,
     color: colors.textPrimary,
     paddingHorizontal: spacing.sm,
     paddingTop: spacing.xs,
   },
   price: {
     ...typography.caption,
+    fontFamily: fontFamily.sansMedium,
     color: colors.textSecondary,
     paddingHorizontal: spacing.sm,
     paddingBottom: spacing.sm,
@@ -217,8 +240,10 @@ const styles = StyleSheet.create({
   },
   newBadgeText: {
     ...typography.smallCaps,
+    fontFamily: fontFamily.sansBold,
     fontSize: 8,
     color: colors.textInverse,
+    letterSpacing: 1,
   },
   saleBadge: {
     position: 'absolute',
@@ -231,8 +256,10 @@ const styles = StyleSheet.create({
   },
   saleBadgeText: {
     ...typography.smallCaps,
+    fontFamily: fontFamily.sansBold,
     fontSize: 8,
     color: colors.textInverse,
+    letterSpacing: 1,
   },
   selectedBadge: {
     position: 'absolute',
@@ -273,6 +300,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     ...typography.headingMedium,
+    fontFamily: fontFamily.serifMedium,
     color: colors.textSecondary,
     marginTop: spacing.md,
     textAlign: 'center',

@@ -1,16 +1,53 @@
 import { useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { Shirt } from 'lucide-react-native';
 import { useAvatarStore } from '@/store/avatarStore';
 import Avatar3DViewer from './Avatar3DViewer';
-import { colors, typography, spacing, radius } from '@/constants/theme';
+import { colors, typography, spacing, radius, shadows } from '@/constants/theme';
+import type { Garment } from '@/types';
 
 interface AvatarViewerProps {
-  selectedGarmentIds?: string[];
+  selectedGarments?: Garment[];
+  onDeselect?: (id: string) => void;
 }
 
-export default function AvatarViewer({ selectedGarmentIds = [] }: AvatarViewerProps) {
+function SelectedGarmentsStrip({
+  garments,
+  onDeselect,
+}: {
+  garments: Garment[];
+  onDeselect?: (id: string) => void;
+}) {
+  if (!garments.length) return null;
+  return (
+    <View style={styles.chipStrip}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipRow}
+      >
+        {garments.map((g) => (
+          <Pressable key={g.id} style={styles.chip} onPress={() => onDeselect?.(g.id)}>
+            {g.thumbnail_url ? (
+              <Image source={{ uri: g.thumbnail_url }} style={styles.chipImage} />
+            ) : (
+              <View style={[styles.chipImage, styles.chipPlaceholder]}>
+                <Shirt size={14} color={colors.textTertiary} />
+              </View>
+            )}
+            <View style={styles.chipX}>
+              <Text style={styles.chipXText}>×</Text>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+export default function AvatarViewer({ selectedGarments = [], onDeselect }: AvatarViewerProps) {
   const { t } = useTranslation();
   const { avatarUrl, glbUrl, scanStatus } = useAvatarStore();
   const [use3D, setUse3D] = useState(true);
@@ -26,6 +63,7 @@ export default function AvatarViewer({ selectedGarmentIds = [] }: AvatarViewerPr
             {t('dressingRoom.scanToCreate')}
           </Text>
         </View>
+        <SelectedGarmentsStrip garments={selectedGarments} onDeselect={onDeselect} />
       </View>
     );
   }
@@ -38,14 +76,7 @@ export default function AvatarViewer({ selectedGarmentIds = [] }: AvatarViewerPr
           glbUrl={glbUrl}
           onLoadError={() => setUse3D(false)}
         />
-
-        {/* Selected garments indicator */}
-        {selectedGarmentIds.length > 0 && (
-          <View style={styles.garmentIndicator}>
-            <Ionicons name="shirt-outline" size={16} color={colors.textInverse} />
-            <Text style={styles.garmentCount}>{selectedGarmentIds.length}</Text>
-          </View>
-        )}
+        <SelectedGarmentsStrip garments={selectedGarments} onDeselect={onDeselect} />
       </View>
     );
   }
@@ -55,18 +86,12 @@ export default function AvatarViewer({ selectedGarmentIds = [] }: AvatarViewerPr
     <View style={styles.container}>
       <Image source={{ uri: avatarUrl }} style={styles.avatarImage} resizeMode="contain" />
 
-      {/* Selected garments indicator */}
-      {selectedGarmentIds.length > 0 && (
-        <View style={styles.garmentIndicator}>
-          <Ionicons name="shirt-outline" size={16} color={colors.textInverse} />
-          <Text style={styles.garmentCount}>{selectedGarmentIds.length}</Text>
-        </View>
-      )}
-
       {/* 2D Preview badge */}
       <View style={styles.previewBadge}>
         <Text style={styles.previewText}>2D Preview</Text>
       </View>
+
+      <SelectedGarmentsStrip garments={selectedGarments} onDeselect={onDeselect} />
     </View>
   );
 }
@@ -74,7 +99,7 @@ export default function AvatarViewer({ selectedGarmentIds = [] }: AvatarViewerPr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -97,22 +122,6 @@ const styles = StyleSheet.create({
     width: '80%',
     height: '90%',
   },
-  garmentIndicator: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-  },
-  garmentCount: {
-    ...typography.labelMedium,
-    color: colors.textInverse,
-  },
   previewBadge: {
     position: 'absolute',
     bottom: spacing.md,
@@ -125,5 +134,46 @@ const styles = StyleSheet.create({
   previewText: {
     ...typography.caption,
     color: colors.textInverse,
+  },
+  chipStrip: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingVertical: spacing.xs,
+  },
+  chipRow: {
+    paddingHorizontal: spacing.sm,
+    gap: spacing.xs,
+    alignItems: 'flex-end',
+  },
+  chip: {
+    width: 40,
+    height: 48,
+    borderRadius: radius.xs,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  chipImage: {
+    width: 40,
+    height: 36,
+    backgroundColor: colors.backgroundSecondary,
+  },
+  chipPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chipX: {
+    height: 12,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chipXText: {
+    color: colors.textInverse,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '700',
   },
 });

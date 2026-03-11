@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { UserPlus } from 'lucide-react-native';
 import { useAuth } from '@/hooks/useAuth';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -19,13 +21,42 @@ import { colors, typography, spacing } from '@/constants/theme';
 export default function SignupScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signIn, signInWithGoogle } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  /**
+   * Try to sign in with the given credentials.
+   * Returns true if successful, false otherwise.
+   * Shows appropriate alerts on failure.
+   */
+  const attemptSignIn = useCallback(async (emailAddr: string, pwd: string): Promise<boolean> => {
+    try {
+      await signIn(emailAddr, pwd);
+      // AuthProvider will redirect based on onboarding_completed status
+      return true;
+    } catch (signInError: any) {
+      const signInMsg = (signInError.message || '').toLowerCase();
+      if (signInMsg.includes('not confirmed') || signInMsg.includes('email_not_confirmed')) {
+        Alert.alert(
+          'Email Not Confirmed',
+          'Your account exists but your email has not been confirmed yet. Please check your inbox (including spam) for the confirmation link from Supabase, then try logging in.',
+        );
+      } else if (signInMsg.includes('invalid') || signInMsg.includes('credentials')) {
+        Alert.alert(
+          t('common.error'),
+          'Incorrect password for this email. Please try again or use a different email.',
+        );
+      } else {
+        Alert.alert(t('common.error'), signInError.message);
+      }
+      return false;
+    }
+  }, [signIn, t]);
 
   const handleSignup = useCallback(async () => {
     if (!fullName || !email || !password || !confirmPassword) return;
@@ -35,14 +66,47 @@ export default function SignupScreen() {
     }
     setLoading(true);
     try {
-      await signUp(email, password, fullName);
-      router.replace('/(auth)/onboarding');
+      const result = await signUp(email, password, fullName);
+
+      switch (result.status) {
+        case 'session_created':
+          // Fresh signup succeeded with a session — go to onboarding
+          router.replace('/(auth)/onboarding');
+          break;
+
+        case 'user_already_exists':
+          // Email already in auth.users — try signing in with the same password
+          console.log('[Signup] User already exists, attempting sign in...');
+          await attemptSignIn(email, password);
+          break;
+
+        case 'email_confirmation_needed':
+          // Signup succeeded but email confirmation is required
+          // Try signing in anyway (in case auto-confirm is on or was previously confirmed)
+          console.log('[Signup] Email confirmation needed, trying sign in...');
+          const signedIn = await attemptSignIn(email, password);
+          if (!signedIn) {
+            Alert.alert(
+              'Check Your Email',
+              'We\'ve sent a confirmation link to your email. Please click the link to activate your account, then come back and log in.',
+            );
+          }
+          break;
+      }
     } catch (error: any) {
-      Alert.alert(t('common.error'), error.message);
+      const msg = (error.message || '').toLowerCase();
+
+      if (msg.includes('rate limit') || msg.includes('email rate limit')) {
+        // Rate limited — try to sign in since the account likely exists
+        console.log('[Signup] Rate limited, attempting sign in...');
+        await attemptSignIn(email, password);
+      } else {
+        Alert.alert(t('common.error'), error.message);
+      }
     } finally {
       setLoading(false);
     }
-  }, [fullName, email, password, confirmPassword, signUp, router, t]);
+  }, [fullName, email, password, confirmPassword, signUp, attemptSignIn, router, t]);
 
   const handleGoogleSignup = useCallback(async () => {
     try {
@@ -65,7 +129,14 @@ export default function SignupScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.brand}>OLVON</Text>
+          <View style={styles.brandRow}>
+            <Image
+              source={require('@/assets/images/olvon-logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.brand}>OLVON</Text>
+          </View>
           <Text style={styles.title}>{t('auth.createAccount')}</Text>
         </View>
 
@@ -107,6 +178,7 @@ export default function SignupScreen() {
             onPress={handleSignup}
             loading={loading}
             fullWidth
+            leftIcon={<UserPlus size={18} color={colors.textInverse} />}
           />
 
           <View style={styles.divider}>
@@ -120,6 +192,13 @@ export default function SignupScreen() {
             onPress={handleGoogleSignup}
             variant="secondary"
             fullWidth
+            leftIcon={
+              <Image
+                source={require('@/assets/images/google-logo.png')}
+                style={styles.googleIcon}
+                resizeMode="contain"
+              />
+            }
           />
         </View>
 
@@ -147,12 +226,25 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xxl,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  brandLogo: {
+    width: 24,
+    height: 24,
+  },
   brand: {
     ...typography.smallCaps,
     fontSize: 13,
     letterSpacing: 4,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+  },
+  googleIcon: {
+    width: 18,
+    height: 18,
   },
   title: {
     ...typography.displayMedium,
